@@ -27,7 +27,7 @@ def get_get_redis_sentinel(hostname, port=26379, socket_timeout=0.5):
     return Sentinel([(hostname, port)], socket_timeout)
 
 
-def is_master(sentinel, master_group_name):
+def is_master(sentinel, master_group_name='mymaster'):
     state = sentinel.sentinel_masters()
     return sentinel.check_master_state(state, master_group_name)
 
@@ -56,7 +56,7 @@ def find_redis_and_label(v1):
     pod_details = get_redis_pods(v1)
     for pod_data in pod_details:
         my_client = get_get_redis_sentinel(pod_data[0] + "." + pod_data[1] + "." + pod_data[2], 26379)
-        if is_master(my_client):
+        if is_master(my_client, args.cluster_name):
             redis_role = "master"
             logging.debug(f"{pod_data[0]} is a master")
         else:
@@ -70,6 +70,7 @@ parser = argparse.ArgumentParser(description="Checking redis pods and labelling 
 parser.add_argument('--dry-run', dest='dry_run', action='store_true', default=False)
 parser.add_argument('--namespace', dest='namespace', required=False, default='redis')
 parser.add_argument('--pod-selector', dest='pod_selector', default='app=redis-ha', required=False)
+parser.add_argument('--redis-cluster-name', dest='cluster_name', required=True)
 parser.add_argument('--company-domain', dest='domain', default='redmart.com', required=False)
 parser.add_argument('--config-file', dest='config_file', required=False)
 parser.add_argument('--incluster-config', dest='incluster_config', action='store_true', required=False, default=False)
