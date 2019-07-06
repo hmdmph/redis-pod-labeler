@@ -66,7 +66,7 @@ def find_redis_and_label(v1):
 
 
 # MAIN
-parser = argparse.ArgumentParser(description="Checking redis pods and labelling them with master/slave accordingly")
+parser = argparse.ArgumentParser(description="Checking redis pods and labelling them with master/ slave accordingly")
 parser.add_argument('--dry-run', dest='dry_run', action='store_true', default=False)
 parser.add_argument('--namespace', dest='namespace', required=False, default='redis')
 parser.add_argument('--pod-selector', dest='pod_selector', default='app=redis-ha', required=False)
