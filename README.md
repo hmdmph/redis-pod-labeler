@@ -1,11 +1,16 @@
-# mongo-pod-labeler
-Docker image for find and label the mongo pods in the kubernetes cluster according to the role ( primary, secondary) 
+# redis-pod-labeler
+Docker image for find and label the redis pods in the kubernetes cluster according to the role ( master, slave) 
 
-[Docker Image Link](https://hub.docker.com/r/redmart/mongo-pod-labeler)
+[Docker Image Link](https://hub.docker.com/r/redmart/redis-pod-labeler)
 
 ## Description
-A simple python script to find the mongo pods in Kubernetes for the given labels and label them according to the rule.
-mongo command `isMaster()` used to identify the role of the mongo server and apply the labels `primary`,  `secondary` accordingly. 
+A simple python script to find the redis pods in Kubernetes for the given labels and label them according to the rule.
+
+`redis-cli -h redis-ha.redis -p 26379 sentinel get-master-addr-by-name mymaster` - used to get the redis master service details
+
+`grep -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'` - used to get the IP address filtered
+
+Those pods updated with the labels `master`,  `slave` accordingly.
 
 ## Arguments
 
@@ -24,4 +29,4 @@ mongo command `isMaster()` used to identify the role of the mongo server and app
 |`--verbose`                 | enable detailed output in the logs                 | False        |
  
 ## Example Deployment
-An example of a deployment can be found in the file `sample-mongo-pod-labeler-deployment.yaml` 
+An example of a deployment can be found in the file `sample-redis-pod-labeler-deployment.yaml` 
