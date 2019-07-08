@@ -1,0 +1,88 @@
+# Here we create service-account/role and binding to access namespace and pods
+# and Deployment uses the created service account
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: redis-pod-labeler
+  name: redis-pod-labeler-service-account
+  namespace: redis
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: redis-pod-labeler-role
+  namespace: redis
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "pods"]
+    verbs: ["get", "patch", "list"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: redis-pod-labeler-rolebinding
+  namespace: redis
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: redis-pod-labeler-role
+subjects:
+  - kind: ServiceAccount
+    name: redis-pod-labeler-service-account
+    namespace: redis
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: redis-pod-labeler
+  name: redis-pod-labeler
+  namespace: redis
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: redis-pod-labeler
+  template:
+    metadata:
+      labels:
+        app: redis-pod-labeler
+    spec:
+      containers:
+        - name: redis-pod-labeler
+          imagePullPolicy: Always
+          image: "redmart/redis-pod-labeler:1.0.0"
+          args:
+            - ./redis-labeler.py
+            - --namespace=redis    # namespace which deployed redis
+            - --pod-selector=app=redis-ha #  key=value of to match and get the redis pods (here app=redis-ha)
+            - --update-period=60   # how frequent labelling should happen( default to 60 seconds = 1 minute )
+            - --redis-cluster-name=mymaster # redis cluster name
+            - --redis-headless-svc-name=redis-ha # redis headless service name
+            #- --verbose            # if u want to see more detailed output
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - ps uaxw | egrep 'python' | grep -v 'grep'
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - ps uaxw | egrep 'python' | grep -v 'grep'
+          resources:
+            limits:
+              cpu: 300m
+              memory: 300Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+      serviceAccountName: redis-pod-labeler-service-account
