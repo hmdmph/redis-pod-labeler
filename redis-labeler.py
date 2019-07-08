@@ -84,7 +84,7 @@ parser.add_argument('--pod-selector', dest='pod_selector', default='app=redis-ha
 parser.add_argument('--redis-cluster-name', dest='cluster_name', required=True)
 parser.add_argument('--redis-headless-svc-name', dest='headless_name', required=True)
 parser.add_argument('--redis-sentinel_port', dest='sentinel_port', default=26379, required=False)
-parser.add_argument('--cluster_domain', dest='cluster_domain', default=DEFAULT_CLUSTER_DOMAIN, required=False)
+parser.add_argument('--cluster-domain', dest='cluster_domain', default=DEFAULT_CLUSTER_DOMAIN, required=False)
 parser.add_argument('--company-domain', dest='domain', default='redmart.com', required=False)
 parser.add_argument('--config-file', dest='config_file', required=False)
 parser.add_argument('--incluster-config', dest='incluster_config', action='store_true', required=False, default=False)
