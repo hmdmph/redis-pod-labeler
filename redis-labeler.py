@@ -16,30 +16,45 @@
 
 import argparse
 import logging
+import subprocess
 import time
 
 from kubernetes import config, client
-from redis.sentinel import Sentinel
+
+POD_NAME_ANNOTATION = 'statefulset.kubernetes.io/pod-name'
+DEFAULT_CLUSTER_DOMAIN = 'cluster.local'
 
 
-def get_get_redis_sentinel(hostname, port=26379, socket_timeout=0.5):
-    logging.debug(f"Connecting to redis sentinel", )
-    return Sentinel([(hostname, port)], socket_timeout)
+def get_redis_master_svc_ip(redis_host, sentinel_port, sentinel_cluster_name):
+    result_1 = subprocess.run(
+        ['redis-cli', '-h', redis_host, '-p', str(sentinel_port), 'sentinel', 'get-master-addr-by-name', sentinel_cluster_name],
+        stdout=subprocess.PIPE)
+    result_2 = subprocess.run(['sed', '-n', '1p'], input=result_1.stdout, stdout=subprocess.PIPE)
+    result_3 = subprocess.run(['grep', '-E', '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'], input=result_2.stdout,
+                              stdout=subprocess.PIPE)
+    return str(result_3.stdout.decode('utf-8'))
 
 
-def is_master(sentinel, master_group_name='mymaster'):
-    state = sentinel.sentinel_masters()
-    return sentinel.check_master_state(state, master_group_name)
+def get_redis_pods_with_roles(k8s_api, master_svc_ip):
+    redis_pods_with_role = []
+    services = k8s_api.list_namespaced_service(namespace="{}".format(args.namespace))
+    logging.debug(f"getting list of all services in namespace {args.namespace}")
+    for service in services.items:
+        if POD_NAME_ANNOTATION in service.spec.selector:
+            redis_pod_name = service.spec.selector[POD_NAME_ANNOTATION].strip()
+            logging.debug("|" + service.spec.cluster_ip + "|" + master_svc_ip + "|" + redis_pod_name)
+            if str(service.spec.cluster_ip.strip()) == str(master_svc_ip.strip()):
+                logging.info("master: " + redis_pod_name)
+                redis_pods_with_role.append(("master", redis_pod_name))
+                # + '.' + args.headless_name + '.' + args.namespace +'.svc.' + args.cluster_domain))
+            else:
+                logging.info("slave: " + redis_pod_name)
+                redis_pods_with_role.append(("slave", redis_pod_name))
+                # + '.' + args.headless_name + '.' + args.namespace +'.svc.' + args.cluster_domain))
+        else:
+            logging.debug("not redis cluster related service")
 
-
-def get_redis_pods(k8s_api):
-    redis_host_names = []
-    logging.debug(f"getting redis pods for matched label(s) {args.pod_selector} in namespace {args.namespace}")
-    pod_details = k8s_api.list_namespaced_pod(namespace="{}".format(args.namespace),
-                                              label_selector="{}".format(args.pod_selector))
-    for item in pod_details.items:
-        redis_host_names.append((item.metadata.name, item.metadata.generate_name[:-1], item.metadata.namespace))
-    return redis_host_names
+    return redis_pods_with_role
 
 
 def label_redis_pods(k8s_api, pod_name, label):
@@ -53,16 +68,12 @@ def generate_pod_label_body(label, domain):
 
 
 def find_redis_and_label(v1):
-    pod_details = get_redis_pods(v1)
+    master_ip = get_redis_master_svc_ip(args.headless_name + '.' + args.namespace, args.sentinel_port, args.cluster_name)
+    logging.info('Master Is: ' + master_ip)
+    pod_details = get_redis_pods_with_roles(v1, master_ip)
     for pod_data in pod_details:
-        my_client = get_get_redis_sentinel(pod_data[0] + "." + pod_data[1] + "." + pod_data[2], 26379)
-        if is_master(my_client, args.cluster_name):
-            redis_role = "master"
-            logging.debug(f"{pod_data[0]} is a master")
-        else:
-            redis_role = "slave"
-            logging.debug(f"{pod_data[0]} is a slave")
-        label_redis_pods(v1, pod_data[0], generate_pod_label_body(redis_role, args.domain))
+        logging.debug(f"POD:  {pod_data[0]}, {pod_data[1]}")
+        label_redis_pods(v1, pod_data[1], generate_pod_label_body(pod_data[0], args.domain))
 
 
 # MAIN
@@ -71,6 +82,9 @@ parser.add_argument('--dry-run', dest='dry_run', action='store_true', default=Fa
 parser.add_argument('--namespace', dest='namespace', required=False, default='redis')
 parser.add_argument('--pod-selector', dest='pod_selector', default='app=redis-ha', required=False)
 parser.add_argument('--redis-cluster-name', dest='cluster_name', required=True)
+parser.add_argument('--redis-headless-svc-name', dest='headless_name', required=True)
+parser.add_argument('--redis-sentinel_port', dest='sentinel_port', default=26379, required=False)
+parser.add_argument('--cluster_domain', dest='cluster_domain', default=DEFAULT_CLUSTER_DOMAIN, required=False)
 parser.add_argument('--company-domain', dest='domain', default='redmart.com', required=False)
 parser.add_argument('--config-file', dest='config_file', required=False)
 parser.add_argument('--incluster-config', dest='incluster_config', action='store_true', required=False, default=False)
