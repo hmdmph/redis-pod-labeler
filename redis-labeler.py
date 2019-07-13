@@ -21,8 +21,9 @@ import time
 
 from kubernetes import config, client
 
-POD_NAME_ANNOTATION = 'statefulset.kubernetes.io/pod-name'
-DEFAULT_CLUSTER_DOMAIN = 'cluster.local'
+POD_NAME_ANNOTATION = "statefulset.kubernetes.io/pod-name"
+DEFAULT_CLUSTER_DOMAIN = "cluster.local"
+REDIS_HA = "redis-ha"
 
 
 def get_redis_master_svc_ip(redis_host, sentinel_port, sentinel_cluster_name):
@@ -37,24 +38,30 @@ def get_redis_master_svc_ip(redis_host, sentinel_port, sentinel_cluster_name):
 
 def get_redis_pods_with_roles(k8s_api, master_svc_ip):
     redis_pods_with_role = []
-    services = k8s_api.list_namespaced_service(namespace="{}".format(args.namespace))
+    services = k8s_api.list_namespaced_service(namespace="{}".format(args.namespace), label_selector='app={}'.format(REDIS_HA))
     logging.debug(f"getting list of all services in namespace {args.namespace}")
     for service in services.items:
-        if POD_NAME_ANNOTATION in service.spec.selector:
+        if is_redis_ha_service(service.spec.selector):
             redis_pod_name = service.spec.selector[POD_NAME_ANNOTATION].strip()
             logging.debug("|" + service.spec.cluster_ip + "|" + master_svc_ip + "|" + redis_pod_name)
             if str(service.spec.cluster_ip.strip()) == str(master_svc_ip.strip()):
                 logging.info("master: " + redis_pod_name)
                 redis_pods_with_role.append(("master", redis_pod_name))
-                # + '.' + args.headless_name + '.' + args.namespace +'.svc.' + args.cluster_domain))
             else:
                 logging.info("slave: " + redis_pod_name)
                 redis_pods_with_role.append(("slave", redis_pod_name))
-                # + '.' + args.headless_name + '.' + args.namespace +'.svc.' + args.cluster_domain))
         else:
-            logging.debug("not redis cluster related service")
+            logging.debug(f"not redis cluster related service - {str(service.spec.selector)}")
 
     return redis_pods_with_role
+
+
+def is_redis_ha_service(service_selector):
+    logging.debug(f"{str(service_selector)}")
+    if POD_NAME_ANNOTATION.strip() in service_selector:
+        return True
+    else:
+        return False
 
 
 def label_redis_pods(k8s_api, pod_name, label):
