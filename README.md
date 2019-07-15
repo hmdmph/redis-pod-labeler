@@ -19,7 +19,7 @@ Those pods updated with the labels `master`,  `slave` accordingly.
 |`--redis-cluster-name`     | redis sentinel master-group-name (must required)    |              |
 |`--redis-headless-svc-name`| headless service name of the redis (must required)  |              |
 |`--namespace`              | namespace of the redis-ha deployment                | redis        |
-|`--pod-selector`           | key=value of to match labels and get the redis pods | app=redis-ha |
+|`--svc-selector`           | key=value of to match labels and get the redis announce service | app=redis-ha |
 |`--redis-sentinel_port`    | redis sentinel port                                 | 26379        |
 |`--update-period`          | How frequent this should update the labels (seconds)| 60           |
 |`--company-domain`         | company domain to make label key (example.com/role) | redmart.com  |
