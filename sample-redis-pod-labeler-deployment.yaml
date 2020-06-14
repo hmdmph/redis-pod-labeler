@@ -57,7 +57,7 @@ spec:
       containers:
         - name: redis-pod-labeler
           imagePullPolicy: Always
-          image: "redmart/redis-pod-labeler:1.0.0"
+          image: "hmdmph/redis-pod-labeler:1.0.0"
           args:
             - ./redis-labeler.py
             - --namespace=redis    # namespace which deployed redis

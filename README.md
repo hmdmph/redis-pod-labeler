@@ -1,7 +1,7 @@
 # redis-pod-labeler
 Docker image for find and label the redis pods in the kubernetes cluster according to the role ( master, slave) 
 
-[Docker Image Link](https://hub.docker.com/r/redmart/redis-pod-labeler)
+[Docker Image Link](https://hub.docker.com/repository/docker/hmdmph/redis-pod-labeler)
 
 ## Description
 A simple python script to find the redis pods in Kubernetes for the given labels and label them according to the rule.
@@ -22,11 +22,12 @@ Those pods updated with the labels `master`,  `slave` accordingly.
 |`--svc-selector`           | key=value of to match labels and get the redis announce service | app=redis-ha |
 |`--redis-sentinel_port`    | redis sentinel port                                 | 26379        |
 |`--update-period`          | How frequent this should update the labels (seconds)| 60           |
-|`--company-domain`         | company domain to make label key (example.com/role) | redmart.com  |
+|`--company-domain`         | company domain to make label key (example.com/role) | redis.io     |
 |`--config-file`            | path to kube config file                            |       -      |
 |`--incluster-config`       | load in-cluster kube config                         | True         |
 |`--insecure-skip-tls-verify`| skip tls verification                              | False        |
 |`--verbose`                 | enable detailed output in the logs                 | False        |
  
+
 ## Example Deployment
 An example of a deployment can be found in the file `sample-redis-pod-labeler-deployment.yaml` 
